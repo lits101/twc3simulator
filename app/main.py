@@ -2,12 +2,14 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
 import os
+import time
+import base64
 
 app = FastAPI()
 
 tasmota_ip = os.getenv('TASMOTA_IP', '172.16.90.72')
+START_TIME = time.time()
 
-# Define the data structure
 class Vitals(BaseModel):
     contactor_closed: bool
     vehicle_connected: bool
@@ -36,47 +38,58 @@ class Vitals(BaseModel):
     evse_state: int
     current_alerts: list
 
+class Version(BaseModel):
+    firmware_version: str
+    part_number: str
+    serial_number: str
 
-def get_tasmota_current(tasmota_ip):
-    url = f"http://{tasmota_ip}/cm?cmnd=status%208"
-    #{"StatusSNS":{"Time":"1970-01-01T17:54:20","ANALOG":{"Temperature":15.0},"ENERGY":{"TotalStartTime":"1970-01-01T00:00:00","Total":2.361,"Yesterday":0.000,"Today":2.361,"Power":2,"ApparentPower":13,"ReactivePower":12,"Factor":0.17,"Voltage":225,"Current":0.056},"TempUnit":"C"}}
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        return data["StatusSNS"]["ENERGY"]["Current"]
-    except requests.RequestException as e:
-        raise ValueError(f"Error fetching data from Tasmota device: {e}")
+class Lifetime(BaseModel):
+    contactor_cycles: int
+    contactor_cycles_loaded: int
+    alert_count: int
+    thermal_foldbacks: int
+    avg_startup_temp: float
+    charge_starts: int
+    energy_wh: float
+    connector_cycles: int
+    uptime_s: int
+    charging_time_s: int
 
-def get_tasmota_connected(tasmota_ip):
-    url = f"http://{tasmota_ip}/cm?cmnd=status%200"
-    #{"Status":{'Module': 46, 'DeviceName': 'tm_gangOG', 'FriendlyName': [''], 'Topic': 'tasmota_12C771', 'ButtonTopic': '0', 'Power': 1, 'PowerOnState': 3, 'LedState': 1, 'LedMask': 'FFFF', 'SaveData': 1, 'SaveState': 1, 'SwitchTopic': '0', 'SwitchMode': [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'ButtonRetain': 0, 'SwitchRetain': 0, 'SensorRetain': 0, 'PowerRetain': 0, 'InfoRetain': 0, 'StateRetain': 0, 'StatusRetain': 0}
+class WifiStatus(BaseModel):
+    wifi_ssid: str
+    wifi_signal_strength: int
+    wifi_rssi: int
+    wifi_snr: int
+    wifi_connected: bool
+    wifi_infra_ip: str
+    internet: bool
+    wifi_mac: str
+
+
+def fetch_tasmota_status():
+    """Single Status 0 call to Tasmota. Raises on failure."""
+    response = requests.get(f"http://{tasmota_ip}/cm?cmnd=Status%200", timeout=2)
+    response.raise_for_status()
+    return response.json()
+
+def get_tasmota_status():
+    """Best-effort version for lifetime/wifi_status — returns {} on failure
+    rather than raising, since those endpoints can degrade gracefully."""
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if data["Status"]["Power"] == 1:
-            power = True
-        else:
-            power = False
-        return power
-    except requests.RequestException as e:
-        raise ValueError(f"Error fetching data from Tasmota device: {e}")
+        return fetch_tasmota_status()
+    except Exception:
+        return {}
+
 @app.get("/api/1/vitals")
 async def get_vitals():
     try:
-        current = get_tasmota_current(tasmota_ip)
-    except ValueError as e:
-        return {"error": str(e)}
-    if current <= 4.5:
-        charging = False
-    else:
-        charging = True
-    try:
-        connected = get_tasmota_connected(tasmota_ip)
-    except ValueError as e:
-        return {"error": str(e)}
-    vitals = Vitals(
+        data = fetch_tasmota_status()
+    except requests.RequestException as e:
+        return {"error": f"Error fetching data from Tasmota device: {e}"}
+    current = data.get("StatusSNS", {}).get("ENERGY", {}).get("Current", 0)
+    charging = current > 4.5
+    connected = data.get("Status", {}).get("Power") == 1
+    return Vitals(
         contactor_closed=charging,
         vehicle_connected=connected,
         session_s=0,
@@ -103,48 +116,32 @@ async def get_vitals():
         config_status=5,
         evse_state=1,
         current_alerts=[]
-        # ... the other static stuf..contactor_closed=True,
     )
-    return vitals
-
-import time
-import requests
-import base64
-
-START_TIME = time.time()
-
-def get_tasmota_status():
-    try:
-        r = requests.get(f"http://{tasmota_ip}/cm?cmnd=Status%200", timeout=2)
-        r.raise_for_status()
-        return r.json()
-    except Exception:
-        return {}
 
 @app.get("/api/1/version")
 async def version():
-    return {
-        "firmware_version": "24.44.3",
-        "part_number": "1529455-01-D",
-        "serial_number": "SIMULATOR0001",
-    }
+    return Version(
+        firmware_version="24.44.3",
+        part_number="1529455-01-D",
+        serial_number="SIMULATOR0001",
+    )
 
 @app.get("/api/1/lifetime")
 async def lifetime():
     status = get_tasmota_status()
     energy_kwh = status.get("StatusSNS", {}).get("ENERGY", {}).get("Total", 0)
-    return {
-        "contactor_cycles": 0,
-        "contactor_cycles_loaded": 0,
-        "alert_count": 0,
-        "thermal_foldbacks": 0,
-        "avg_startup_temp": 25.0,
-        "charge_starts": 0,
-        "energy_wh": round(energy_kwh * 1000, 1),
-        "connector_cycles": 0,
-        "uptime_s": int(time.time() - START_TIME),
-        "charging_time_s": 0,
-    }
+    return Lifetime(
+        contactor_cycles=0,
+        contactor_cycles_loaded=0,
+        alert_count=0,
+        thermal_foldbacks=0,
+        avg_startup_temp=25.0,
+        charge_starts=0,
+        energy_wh=round(energy_kwh * 1000, 1),
+        connector_cycles=0,
+        uptime_s=int(time.time() - START_TIME),
+        charging_time_s=0,
+    )
 
 @app.get("/api/1/wifi_status")
 async def wifi_status():
@@ -152,13 +149,13 @@ async def wifi_status():
     wifi = status.get("StatusSTS", {}).get("Wifi", {})
     net = status.get("StatusNET", {})
     ssid = wifi.get("SSId", "")
-    return {
-        "wifi_ssid": base64.b64encode(ssid.encode()).decode(),
-        "wifi_signal_strength": wifi.get("RSSI", 0),
-        "wifi_rssi": wifi.get("Signal", 0),
-        "wifi_snr": 40,
-        "wifi_connected": bool(wifi.get("AP", 0)),
-        "wifi_infra_ip": net.get("IPAddress", "0.0.0.0"),
-        "internet": True,
-        "wifi_mac": net.get("Mac", "00:00:00:00:00:00"),
-    }
+    return WifiStatus(
+        wifi_ssid=base64.b64encode(ssid.encode()).decode(),
+        wifi_signal_strength=wifi.get("RSSI", 0),
+        wifi_rssi=wifi.get("Signal", 0),
+        wifi_snr=40,
+        wifi_connected=bool(wifi.get("AP", 0)),
+        wifi_infra_ip=net.get("IPAddress", "0.0.0.0"),
+        internet=True,
+        wifi_mac=net.get("Mac", "00:00:00:00:00:00"),
+    )
