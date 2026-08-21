@@ -7,8 +7,8 @@ services:
       - TASMOTA_IP=10.10.10.10
       # Optional — cosmetic identifiers shown in evcc/Home Assistant.
       # Remove these two lines entirely to use built-in defaults.
-      - SERIAL_NUMBER=<OPTIONAL - your UMC2's actual serial number>
-      - PART_NUMBER=<OPTIONAL - your UMC2's actual part number>
+      - SERIAL_NUMBER=<your UMC2's actual serial number>
+      - PART_NUMBER=<your UMC2's actual part number>
     ports:
       - 80:80/tcp
     restart: unless-stopped
