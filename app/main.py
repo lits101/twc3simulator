@@ -80,31 +80,58 @@ def get_tasmota_status():
     except Exception:
         return {}
 
+# Tracks the start of the current session (energy baseline in kWh, and
+# start timestamp). Both None means no active session.
+session_start_energy_kwh = None
+session_start_time = None
+
 @app.get("/api/1/vitals")
 async def get_vitals():
+    global session_start_energy_kwh, session_start_time
     try:
         data = fetch_tasmota_status()
     except requests.RequestException as e:
         return {"error": f"Error fetching data from Tasmota device: {e}"}
-    current = data.get("StatusSNS", {}).get("ENERGY", {}).get("Current", 0)
+    energy = data.get("StatusSNS", {}).get("ENERGY", {})
+    current = energy.get("Current", 0)
     charging = current > 4.5
     connected = data.get("Status", {}).get("Power") == 1
+    pcba_temp = data.get("StatusSNS", {}).get("ESP32", {}).get("Temperature", 7.4)
+    grid_voltage = energy.get("Voltage", 0) or 229.2
+
+    total_kwh = energy.get("Total", 0)
+    if connected and session_start_energy_kwh is None:
+        # Session just started — record the baseline
+        session_start_energy_kwh = total_kwh
+        session_start_time = time.time()
+    elif not connected:
+        # Session ended (or never started) — clear the baseline
+        session_start_energy_kwh = None
+        session_start_time = None
+
+    if session_start_energy_kwh is not None:
+        session_energy_wh = round((total_kwh - session_start_energy_kwh) * 1000, 1)
+        session_s = int(time.time() - session_start_time)
+    else:
+        session_energy_wh = 0.0
+        session_s = 0
+
     return Vitals(
         contactor_closed=charging,
         vehicle_connected=connected,
-        session_s=0,
-        grid_v=229.2,
+        session_s=session_s,
+        grid_v=grid_voltage,
         grid_hz=49.828,
         vehicle_current_a=current,
         currentA_a=current,
         currentB_a=0.0,
         currentC_a=0.0,
         currentN_a=0.0,
-        voltageA_v=233,
+        voltageA_v=grid_voltage,
         voltageB_v=0.0,
         voltageC_v=0.0,
         relay_coil_v=11.9,
-        pcba_temp_c=7.4,
+        pcba_temp_c=pcba_temp,
         handle_temp_c=1.8,
         mcu_temp_c=15.2,
         uptime_s=26103,
@@ -112,7 +139,7 @@ async def get_vitals():
         prox_v=0.0,
         pilot_high_v=11.9,
         pilot_low_v=11.8,
-        session_energy_wh=0.000,
+        session_energy_wh=session_energy_wh,
         config_status=5,
         evse_state=1,
         current_alerts=[]
