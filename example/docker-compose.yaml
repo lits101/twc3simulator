@@ -1,14 +1,14 @@
 services:
-  twc3sim:
-    container_name: twc3sim
+  twc3simulator:
+    container_name: twc3simulator
     build: https://github.com/lits101/twc3simulator.git#main
     environment:
       # Required — IP of the Tasmota device monitoring your UMC's current draw
-      - "TASMOTA_IP=10.10.10.10"
+      - TASMOTA_IP=10.10.10.10
       # Optional — cosmetic identifiers shown in evcc/Home Assistant.
       # Remove these two lines entirely to use built-in defaults.
-      - "SERIAL_NUMBER=<OPTIONAL - your UMC2's actual serial number>"
-      - "PART_NUMBER=<OPTIONAL - your UMC2's actual part number>"
+      - SERIAL_NUMBER=<OPTIONAL - your UMC2's actual serial number>
+      - PART_NUMBER=<OPTIONAL - your UMC2's actual part number>
     ports:
-      - "80:80"
+      - 80:80/tcp
     restart: unless-stopped
