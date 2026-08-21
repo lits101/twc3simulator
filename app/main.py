@@ -7,8 +7,12 @@ import base64
 
 app = FastAPI()
 
+serial_number = os.getenv('SERIAL_NUMBER', 'SIMULATOR0001')
+part_number = os.getenv('PART_NUMBER', '1529455-01-D')
 tasmota_ip = os.getenv('TASMOTA_IP', '172.16.90.72')
 START_TIME = time.time()
+session_start_energy_kwh = None
+session_start_time = None
 
 class Vitals(BaseModel):
     contactor_closed: bool
@@ -80,11 +84,6 @@ def get_tasmota_status():
     except Exception:
         return {}
 
-# Tracks the start of the current session (energy baseline in kWh, and
-# start timestamp). Both None means no active session.
-session_start_energy_kwh = None
-session_start_time = None
-
 @app.get("/api/1/vitals")
 async def get_vitals():
     global session_start_energy_kwh, session_start_time
@@ -149,8 +148,8 @@ async def get_vitals():
 async def version():
     return Version(
         firmware_version="24.44.3",
-        part_number="1529455-01-D",
-        serial_number="SIMULATOR0001",
+        part_number=part_number,
+        serial_number=serial_number,
     )
 
 @app.get("/api/1/lifetime")
