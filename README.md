@@ -1,4 +1,4 @@
-# twc3simulator (Tesla Wall Box 3 Simulator)
+# twc3simulator (Tesla Wall Connector 3 Simulator)
 
 Fakes the API responses of a real Tesla Wall Connector 3, using live current, energy, and network data pulled from a Tasmota smart plug wired into the circuit. It doesn't control anything — it's a read-only stand-in that lets software expecting a "real" TWC3 (like evcc or Home Assistant) work with a Tesla Universal Mobile Connector (or any other dumb charger) instead.
 
@@ -8,7 +8,7 @@ This is a fork of [laenglea/twc3simulator](https://github.com/laenglea/twc3simul
 
 ## What this fork adds
 
-I basically just wanted my universal mobile connector to display in Home Assistant. This fork extends langlea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
+I basically just wanted my UMC to display in Home Assistant. This fork extends langlea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
 
 - **`/api/1/version`** — static device identity (firmware/part/serial number). HA's config flow reads these during setup and fails if the endpoint is missing.
 - **`/api/1/lifetime`** — cumulative energy, sourced from the Tasmota device's own running total (`Status 0` → `StatusSNS.ENERGY.Total`), converted from kWh to Wh.
