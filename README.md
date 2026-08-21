@@ -1,69 +1,64 @@
 # twc3simulator (Tesla Wall Box 3 Simulator)
 
-This program simulates the API output of a Tesla Wallbox 3.
+Fakes the API responses of a real Tesla Wall Connector 3, using live current, energy, and network data pulled from a Tasmota smart plug wired into the circuit. It doesn't control anything — it's a read-only stand-in that lets software expecting a "real" TWC3 (like evcc or Home Assistant) work with a Tesla Universal Mobile Connector (or any other dumb charger) instead.
 
-It basically just fakes the output while using information from a Tasmota device to fill the current.
+## Credit
 
-![](media/api.png)
+This is a fork of [laenglea/twc3simulator](https://github.com/laenglea/twc3simulator) — all credit for the original idea and implementation goes to [@laenglea](https://github.com/laenglea), who built this after finding evcc had no way to control charging through a Universal Mobile Connector. 
 
-I use this as a workaround to get evcc working with the mobile charger, as evcc requires a proper charger. The twc3 template is special because it lets evcc use Tesla's own api to start/stop and adjust the current level. 
+## What this fork adds
 
+I basically just wanted my universal mobile connector to display in Home Assistant. This fork extends langlea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
 
-## requirements
+- **`/api/1/version`** — static device identity (firmware/part/serial number). HA's config flow reads these during setup and fails if the endpoint is missing.
+- **`/api/1/lifetime`** — cumulative energy, sourced from the Tasmota device's own running total (`Status 0` → `StatusSNS.ENERGY.Total`), converted from kWh to Wh.
+- **`/api/1/wifi_status`** — Wi-Fi connection details, sourced from the Tasmota device's own network status (`Status 0` → `StatusSTS.Wifi` and `StatusNET`) rather than static placeholders — since the Tasmota is the thing actually connected to your network, its real signal strength, IP, and MAC are more honest than making something up.
 
-- Tasmota outlet to grep the current from. - Something like https://amzn.eu/d/3biI2E2
+All three reuse a single `Status 0` call to the Tasmota device rather than hitting it separately per endpoint.
 
+## Requirements
+
+- A Tasmota outlet or smart relay, connected to your dumb charger of choice. I use a Sonoff POWR320D (20 amp) relay, flashed with Tasmota. 
 
 ## Installation
 
-via docker:
+This fork isn't published as a prebuilt image — build it from source.
 
-    docker run --name twc3simulator -p 80:80 -e TASMOTA_IP=10.10.10.10 laenglea/twc3simulator
+Clone it to the machine you want to run it on:
 
-where TASMOTA_IP ist the ip of the tasmota device where the current information should come from.
+    git clone https://github.com/lits101/twc3simulator.git
 
-or as part of your evcc so you could access it via port 80 without exposint this port at all just with the name of the container 
+Then build and run via docker compose:
 
     services:
-    twc3sim:
-      container_name: twc3sim
-      image: laenglea/twc3simulator
-      environment:
-        - "TASMOTA_IP=172.16.90.72"
-      restart: unless-stopped
-      
-full example in the example folder
+      twc3sim:
+        container_name: twc3sim
+        build: ./twc3simulator
+        environment:
+          - "TASMOTA_IP=10.10.10.10"
+        ports:
+          - "80:80"
+        restart: unless-stopped
 
+where `TASMOTA_IP` is the IP of the Tasmota device the current/energy/wifi information should come from.
 
-for tweaking:
+Or build directly from GitHub without a local clone:
 
-first clone it to the machine you want to run it
+    services:
+      twc3sim:
+        container_name: twc3sim
+        build: https://github.com/lits101/twc3simulator.git#main
+        environment:
+          - "TASMOTA_IP=10.10.10.10"
+        ports:
+          - "80:80"
+        restart: unless-stopped
 
-    git clone https://github.com/laenglea/twc3simulator.git
+## Validate
 
+if it's running properly you should get something back when looking at each of:
 
-## set the correct ip of your tasmota device
-
-    cd twc3simulator
-    
-for this edit the script and set the proper ip address
-
-    vim app/main.py
-
-or set the IP as Envirnment var.
-    
-## run it
-
-to run it native you have to first install the requirements with pip or your package manager
-
-native:
-
-    pip3 install -r requirements.txt
-    sudo uvicorn app.main:app --reload --host 0.0.0.0 --port 80
-
-   
-## validate
-
-if it's running properly you should get something back when looking at
-
-http://<ip>/api/1/vitals
+    http://<ip>/api/1/vitals
+    http://<ip>/api/1/lifetime
+    http://<ip>/api/1/version
+    http://<ip>/api/1/wifi_status
