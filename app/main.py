@@ -95,7 +95,7 @@ async def get_vitals():
     current = energy.get("Current", 0)
     charging = current > 4.5
     connected = data.get("Status", {}).get("Power") == 1
-    pcba_temp = data.get("StatusSNS", {}).get("ESP32", {}).get("Temperature", 7.4)
+    mcu_temp = data.get("StatusSNS", {}).get("ESP32", {}).get("Temperature", 15.2)
     grid_voltage = energy.get("Voltage", 0) or 229.2
 
     total_kwh = energy.get("Total", 0)
@@ -130,9 +130,9 @@ async def get_vitals():
         voltageB_v=0.0,
         voltageC_v=0.0,
         relay_coil_v=11.9,
-        pcba_temp_c=pcba_temp,
+        pcba_temp_c=mcu_temp,
         handle_temp_c=1.8,
-        mcu_temp_c=15.2,
+        mcu_temp_c=mcu_temp,
         uptime_s=26103,
         input_thermopile_uv=-176,
         prox_v=0.0,
