@@ -115,7 +115,7 @@ START_TIME = time.time()
 
 def get_tasmota_status():
     try:
-        r = requests.get(f"http://{TASMOTA_IP}/cm?cmnd=Status%200", timeout=2)
+        r = requests.get(f"http://{tasmota_ip}/cm?cmnd=Status%200", timeout=2)
         r.raise_for_status()
         return r.json()
     except Exception:
@@ -150,7 +150,7 @@ async def lifetime():
 async def wifi_status():
     status = get_tasmota_status()
     wifi = status.get("StatusSTS", {}).get("Wifi", {})
-    mac = status.get("StatusNET", {}).get("Mac", "00:00:00:00:00:00")
+    net = status.get("StatusNET", {})
     ssid = wifi.get("SSId", "")
     return {
         "wifi_ssid": base64.b64encode(ssid.encode()).decode(),
@@ -158,7 +158,7 @@ async def wifi_status():
         "wifi_rssi": wifi.get("Signal", 0),
         "wifi_snr": 40,
         "wifi_connected": bool(wifi.get("AP", 0)),
-        "wifi_infra_ip": "192.168.20.1",
+        "wifi_infra_ip": net.get("IPAddress", "0.0.0.0"),
         "internet": True,
-        "wifi_mac": mac,
+        "wifi_mac": net.get("Mac", "00:00:00:00:00:00"),
     }
