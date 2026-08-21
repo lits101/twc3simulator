@@ -106,3 +106,59 @@ async def get_vitals():
         # ... the other static stuf..contactor_closed=True,
     )
     return vitals
+
+import time
+import requests
+import base64
+
+START_TIME = time.time()
+
+def get_tasmota_status():
+    try:
+        r = requests.get(f"http://{TASMOTA_IP}/cm?cmnd=Status%200", timeout=2)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return {}
+
+@app.get("/api/1/version")
+async def version():
+    return {
+        "firmware_version": "24.44.3",
+        "part_number": "1529455-01-D",
+        "serial_number": "SIMULATOR0001",
+    }
+
+@app.get("/api/1/lifetime")
+async def lifetime():
+    status = get_tasmota_status()
+    energy_kwh = status.get("StatusSNS", {}).get("ENERGY", {}).get("Total", 0)
+    return {
+        "contactor_cycles": 0,
+        "contactor_cycles_loaded": 0,
+        "alert_count": 0,
+        "thermal_foldbacks": 0,
+        "avg_startup_temp": 25.0,
+        "charge_starts": 0,
+        "energy_wh": round(energy_kwh * 1000, 1),
+        "connector_cycles": 0,
+        "uptime_s": int(time.time() - START_TIME),
+        "charging_time_s": 0,
+    }
+
+@app.get("/api/1/wifi_status")
+async def wifi_status():
+    status = get_tasmota_status()
+    wifi = status.get("StatusSTS", {}).get("Wifi", {})
+    mac = status.get("StatusNET", {}).get("Mac", "00:00:00:00:00:00")
+    ssid = wifi.get("SSId", "")
+    return {
+        "wifi_ssid": base64.b64encode(ssid.encode()).decode(),
+        "wifi_signal_strength": wifi.get("RSSI", 0),
+        "wifi_rssi": wifi.get("Signal", 0),
+        "wifi_snr": 40,
+        "wifi_connected": bool(wifi.get("AP", 0)),
+        "wifi_infra_ip": "192.168.20.1",
+        "internet": True,
+        "wifi_mac": mac,
+    }
