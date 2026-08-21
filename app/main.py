@@ -98,7 +98,7 @@ async def get_vitals():
     mcu_temp = data.get("StatusSNS", {}).get("ESP32", {}).get("Temperature", 15.2)
     grid_voltage = energy.get("Voltage", 0) or 229.2
     voltage_a = energy.get("Voltage", 0) or 10
-    current_a = energy.get("Current", 0.60)
+    current_a = energy.get("Current", 0) or 0.60
 
     total_kwh = energy.get("Total", 0)
     if connected and session_start_energy_kwh is None:
