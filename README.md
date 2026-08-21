@@ -18,7 +18,9 @@ All three reuse a single `Status 0` call to the Tasmota device rather than hitti
 
 ## Requirements
 
-- A Tasmota outlet or smart relay, connected to your dumb charger of choice. I use a Sonoff POWR320D (20 amp) relay, flashed with Tasmota. To extract a temperature value for pcba_temp_c, your Tasmota device will require an on-board temperature sensor. In my case, the POWR320D has this, which can be enabled by running: `curl "http://tasmota_ip/cm?cmnd=SetOption146%201"`. Your mileage may vary. 
+- A Tasmota outlet or smart relay, connected to your dumb charger of choice. I use a Sonoff POWR320D (20 amp) relay, flashed with Tasmota.
+
+* To extract a temperature value for pcba_temp_c, your Tasmota device will require an on-board temperature sensor. In my case, the POWR320D has this, which can be enabled by running: `curl "http://tasmota_ip/cm?cmnd=SetOption146%201"`. Your mileage may vary. 
 
 ## Installation
 
