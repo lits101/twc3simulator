@@ -94,7 +94,7 @@ async def get_vitals():
     energy = data.get("StatusSNS", {}).get("ENERGY", {})
     current = energy.get("Current", 0)
     charging = current > 4.5
-    connected = data.get("Status", {}).get("Power") == 1
+    connected = str(data.get("Status", {}).get("Power")) == "1"
     mcu_temp = data.get("StatusSNS", {}).get("ESP32", {}).get("Temperature", 15.2)
     grid_voltage = energy.get("Voltage", 0) or 229.2
     voltage_a = energy.get("Voltage", 0) or 10
