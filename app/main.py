@@ -116,7 +116,14 @@ async def get_vitals():
     else:
         session_energy_wh = 0.0
         session_s = 0
-
+    
+    if not connected:
+        evse_state = 1
+    elif connected and not charging:
+        evse_state = 8 if session_energy_wh > 0 else 4
+    else:
+        evse_state = 11
+        
     return Vitals(
         contactor_closed=charging,
         vehicle_connected=connected,
