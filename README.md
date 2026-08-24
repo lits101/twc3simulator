@@ -2,6 +2,8 @@
 
 Fakes the API responses of a real Tesla Wall Connector 3, using live current, energy, and network data pulled from a Tasmota smart plug wired into the circuit. It doesn't control anything — it's a read-only stand-in that lets software expecting a "real" TWC3 (like evcc or Home Assistant) work with a Tesla Universal Mobile Connector (or any other dumb charger) instead.
 
+<img width="836" height="584" alt="UMC" src="https://github.com/user-attachments/assets/33b68e9f-87c4-4ebe-9231-d9f81c4afd02" />
+
 ## Credit
 
 This is a fork of [laenglea/twc3simulator](https://github.com/laenglea/twc3simulator) — all credit for the original idea and implementation goes to [@laenglea](https://github.com/laenglea), who built this after finding evcc had no way to control charging through a Universal Mobile Connector. 
