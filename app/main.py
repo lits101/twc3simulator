@@ -149,7 +149,7 @@ async def get_vitals():
         pilot_low_v=11.8,
         session_energy_wh=session_energy_wh,
         config_status=5,
-        evse_state=1,
+        evse_state=evse_state,
         current_alerts=[]
     )
 
