@@ -56,6 +56,14 @@ Or build directly from GitHub without a local clone:
           - "80:80"
         restart: unless-stopped
 
+You can also include environment variables for the serial number and part number of your UMC, and these will be passed through to Home Assistant if specified. 
+
+```
+environment:
+  - SERIAL_NUMBER=<your UMC2's actual serial number>
+  - PART_NUMBER=<your UMC2's actual part number>
+```
+
 ## Validate
 
 if it's running properly you should get something back when looking at each of:
