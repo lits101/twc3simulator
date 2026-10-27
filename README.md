@@ -10,19 +10,19 @@ This is a fork of [laenglea/twc3simulator](https://github.com/laenglea/twc3simul
 
 ## What this fork adds
 
-I basically just wanted my UMC to display in Home Assistant. This fork extends langlea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
+I basically just wanted my UMC to display in Home Assistant. This fork extends laenglea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
 
 - **`/api/1/version`** — static device identity (firmware/part/serial number). HA's config flow reads these during setup and fails if the endpoint is missing.
 - **`/api/1/lifetime`** — cumulative energy, sourced from the Tasmota device's own running total (`Status 0` → `StatusSNS.ENERGY.Total`), converted from kWh to Wh.
 - **`/api/1/wifi_status`** — Wi-Fi connection details, sourced from the Tasmota device's own network status (`Status 0` → `StatusSTS.Wifi` and `StatusNET`) rather than static placeholders — since the Tasmota is the thing actually connected to your network, its real signal strength, IP, and MAC are more honest than making something up.
 
-All three reuse a single `Status 0` call to the Tasmota device rather than hitting it separately per endpoint.
+`/lifetime` and `/wifi_status` (like `/vitals`) each make a single `Status 0` call to the Tasmota device per request, rather than several separate commands. `/version` is static and doesn't contact the Tasmota device.
 
 ## Requirements
 
 - A Tasmota outlet or smart relay, connected to your dumb charger of choice. I use a Sonoff POWR320D (20 amp) relay, flashed with Tasmota.
 
-* To extract a temperature value for pcba_temp_c, your Tasmota device will require an on-board temperature sensor. In my case, the POWR320D has this, which can be enabled by running: `curl "http://tasmota_ip/cm?cmnd=SetOption146%201"`. Your mileage may vary. 
+- To extract a temperature value for pcba_temp_c, your Tasmota device will require an on-board temperature sensor. In my case, the POWR320D has this, which can be enabled by running: `curl "http://tasmota_ip/cm?cmnd=SetOption146%201"`. Your mileage may vary. 
 
 ## Installation
 
@@ -35,8 +35,8 @@ Clone it to the machine you want to run it on:
 Then build and run via docker compose:
 
     services:
-      twc3sim:
-        container_name: twc3sim
+      twc3simulator:
+        container_name: twc3simulator
         build: ./twc3simulator
         environment:
           - "TASMOTA_IP=10.10.10.10"
@@ -44,13 +44,13 @@ Then build and run via docker compose:
           - "80:80"
         restart: unless-stopped
 
-where `TASMOTA_IP` is the IP of the Tasmota device the current/energy/wifi information should come from.
+where `TASMOTA_IP` is the IP of the Tasmota device the current/energy/wifi information should come from. It is required: the container will refuse to start, and say why in its logs, if it isn't set.
 
 Or build directly from GitHub without a local clone:
 
     services:
-      twc3sim:
-        container_name: twc3sim
+      twc3simulator:
+        container_name: twc3simulator
         build: https://github.com/lits101/twc3simulator.git#main
         environment:
           - "TASMOTA_IP=10.10.10.10"
@@ -74,3 +74,5 @@ if it's running properly you should get something back when looking at each of:
     http://<ip>/api/1/lifetime
     http://<ip>/api/1/version
     http://<ip>/api/1/wifi_status
+
+If the simulator can't reach the Tasmota device, `vitals`, `lifetime` and `wifi_status` return a 503 error with the reason, rather than made-up values, so clients such as Home Assistant and evcc see an error, not bad data, until it comes back. `version` is static and always responds.
