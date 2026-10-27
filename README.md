@@ -12,7 +12,7 @@ This is a fork of [laenglea/twc3simulator](https://github.com/laenglea/twc3simul
 
 I basically just wanted my UMC to display in Home Assistant. This fork extends laenglea's original idea to work with Home Assistant's Tesla Wall Connector integration, which polls a few endpoints beyond what evcc needs. 
 
-- **`/api/1/version`** — static device identity (firmware/part/serial number). HA's config flow reads these during setup and fails if the endpoint is missing.
+- **`/api/1/version`** — static device identity (firmware/part/serial number), configurable with the `FIRMWARE_VERSION`, `PART_NUMBER` and `SERIAL_NUMBER` environment variables (see Installation). HA's config flow reads these during setup and fails if the endpoint is missing.
 - **`/api/1/lifetime`** — cumulative energy, sourced from the Tasmota device's own running total (`Status 0` → `StatusSNS.ENERGY.Total`), converted from kWh to Wh.
 - **`/api/1/wifi_status`** — Wi-Fi connection details, sourced from the Tasmota device's own network status (`Status 0` → `StatusSTS.Wifi` and `StatusNET`) rather than static placeholders — since the Tasmota is the thing actually connected to your network, its real signal strength, IP, and MAC are more honest than making something up.
 
@@ -58,13 +58,16 @@ Or build directly from GitHub without a local clone:
           - "80:80"
         restart: unless-stopped
 
-You can also include environment variables for the serial number and part number of your UMC, and these will be passed through to Home Assistant if specified. 
+You can also include environment variables for the serial number, part number and firmware version, and these will be passed through to Home Assistant if specified. 
 
 ```
 environment:
   - SERIAL_NUMBER=<your UMC2's actual serial number>
   - PART_NUMBER=<your UMC2's actual part number>
+  - FIRMWARE_VERSION=<firmware version to report>
 ```
+
+`FIRMWARE_VERSION` is cosmetic and defaults to `26.34.0+g1a5f79be65b2b4`, the version reported by a real TWC3 at the time of writing. Set it to match your own TWC3's firmware if you want the simulator to track it.
 
 ## Validate
 

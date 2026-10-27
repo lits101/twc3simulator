@@ -6,9 +6,10 @@ services:
       # Required — IP of the Tasmota device monitoring your UMC's current draw
       - TASMOTA_IP=10.10.10.10
       # Optional — cosmetic identifiers shown in evcc/Home Assistant.
-      # Remove these two lines entirely to use built-in defaults.
+      # Remove these three lines entirely to use built-in defaults.
       - SERIAL_NUMBER=<your UMC2's actual serial number>
       - PART_NUMBER=<your UMC2's actual part number>
+      - FIRMWARE_VERSION=26.34.0+g1a5f79be65b2b4
     ports:
       - 80:80/tcp
     restart: unless-stopped

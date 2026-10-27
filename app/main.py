@@ -9,6 +9,7 @@ app = FastAPI()
 
 serial_number = os.getenv('SERIAL_NUMBER', 'SIMULATOR0001')
 part_number = os.getenv('PART_NUMBER', '1529455-01-D')
+firmware_version = os.getenv('FIRMWARE_VERSION') or '26.34.0+g1a5f79be65b2b4'
 tasmota_ip = os.getenv('TASMOTA_IP', '').strip()
 if not tasmota_ip:
     raise RuntimeError(
@@ -161,7 +162,7 @@ async def get_vitals():
 @app.get("/api/1/version")
 async def version():
     return Version(
-        firmware_version="24.44.3",
+        firmware_version=firmware_version,
         part_number=part_number,
         serial_number=serial_number,
     )
