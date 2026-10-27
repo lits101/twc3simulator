@@ -9,7 +9,11 @@ app = FastAPI()
 
 serial_number = os.getenv('SERIAL_NUMBER', 'SIMULATOR0001')
 part_number = os.getenv('PART_NUMBER', '1529455-01-D')
-tasmota_ip = os.getenv('TASMOTA_IP', '172.16.90.72')
+tasmota_ip = os.getenv('TASMOTA_IP', '').strip()
+if not tasmota_ip:
+    raise RuntimeError(
+        "TASMOTA_IP is not set. Set it to the IP address of your Tasmota device."
+    )
 START_TIME = time.time()
 session_start_energy_kwh = None
 session_start_time = None
@@ -91,10 +95,7 @@ def get_tasmota_status():
 @app.get("/api/1/vitals")
 async def get_vitals():
     global session_start_energy_kwh, session_start_time
-    try:
-        data = fetch_tasmota_status()
-    except requests.RequestException as e:
-        return {"error": f"Error fetching data from Tasmota device: {e}"}
+    data = get_tasmota_status()
     energy = data.get("StatusSNS", {}).get("ENERGY", {})
     current = energy.get("Current", 0)
     charging = current > 4.5
@@ -115,7 +116,7 @@ async def get_vitals():
         session_start_time = None
 
     if session_start_energy_kwh is not None:
-        session_energy_wh = round((total_kwh - session_start_energy_kwh) * 1000, 1)
+        session_energy_wh = max(0.0, round((total_kwh - session_start_energy_kwh) * 1000, 1))
         session_s = int(time.time() - session_start_time)
     else:
         session_energy_wh = 0.0
@@ -146,7 +147,7 @@ async def get_vitals():
         pcba_temp_c=mcu_temp,
         handle_temp_c=1.8,
         mcu_temp_c=mcu_temp,
-        uptime_s=26103,
+        uptime_s=int(time.time() - START_TIME),
         input_thermopile_uv=-176,
         prox_v=0.0,
         pilot_high_v=11.9,
@@ -193,7 +194,7 @@ async def wifi_status():
         wifi_signal_strength=wifi.get("RSSI", 0),
         wifi_rssi=wifi.get("Signal", 0),
         wifi_snr=40,
-        wifi_connected=bool(wifi.get("AP", 0)),
+        wifi_connected=bool(ssid),
         wifi_infra_ip=net.get("IPAddress", "0.0.0.0"),
         internet=True,
         wifi_mac=net.get("Mac", "00:00:00:00:00:00"),
