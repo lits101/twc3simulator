@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import requests
 import os
@@ -77,12 +77,16 @@ def fetch_tasmota_status():
     return response.json()
 
 def get_tasmota_status():
-    """Best-effort version for lifetime/wifi_status — returns {} on failure
-    rather than raising, since those endpoints can degrade gracefully."""
+    """Status 0 for lifetime/wifi_status. Returns 503 if Tasmota can't be
+    reached, so clients mark the entity unavailable instead of reading
+    zeros as real data (a 0 kWh lifetime total looks like a meter reset)."""
     try:
         return fetch_tasmota_status()
-    except Exception:
-        return {}
+    except (requests.RequestException, ValueError) as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Error fetching data from Tasmota device: {e}",
+        )
 
 @app.get("/api/1/vitals")
 async def get_vitals():
